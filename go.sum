@@ -1,0 +1,4 @@
+github.com/mickep76/mapslice-json v0.0.0-20200219143743-9f118f7dce45 h1:qV4L2O3zhoPwDlk7QZYMhSYbo05aHt9uyzzsi/BiUOM=
+github.com/mickep76/mapslice-json v0.0.0-20200219143743-9f118f7dce45/go.mod h1:Fpzmz4najGi/+LKF7hjt/SpVA5044oZ8RFt+AAgyu2Q=
+github.com/ogier/pflag v0.0.1 h1:RW6JSWSu/RkSatfcLtogGfFgpim5p7ARQ10ECk5O750=
+github.com/ogier/pflag v0.0.1/go.mod h1:zkFki7tvTa0tafRvTBIZTvzYyAu6kQhPZFnshFFPE+g=
