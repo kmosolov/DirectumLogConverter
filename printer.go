@@ -1,16 +1,16 @@
 package DirectumLogConverter
 
 import (
+	"bufio"
 	"io"
-	"strings"
 )
 
 type Printer struct {
-	Out io.Writer
+	Writer *bufio.Writer
 }
 
 func NewPrinter(w io.Writer) *Printer {
-	return &Printer{Out: w}
+	return &Printer{bufio.NewWriter(w)}
 }
 
 func (p *Printer) IsWidthFixed() bool {
@@ -18,15 +18,26 @@ func (p *Printer) IsWidthFixed() bool {
 }
 
 func (p *Printer) Print(entry *LogEntry) {
-	p.Out.Write([]byte(strings.Join(entry.Elements, " ")))
-	p.Out.Write([]byte("\n"))
-	for _, as := range entry.AdditionalElements {
-		p.Out.Write([]byte(as))
-		p.Out.Write([]byte("\n"))
+	firstElement := true
+	for _, element := range entry.Elements {
+		if firstElement {
+			firstElement = false
+		} else {
+			p.Writer.WriteRune(' ')
+		}
+		p.Writer.WriteString(element.Value)
+	}
+
+	p.Writer.WriteRune('\n')
+	for _, additionalElement := range entry.AdditionalElements {
+		p.Writer.WriteString(additionalElement)
+		p.Writer.WriteRune('\n')
 	}
 }
 
-func (p *Printer) Flush() { }
+func (p *Printer) Flush() {
+	p.Writer.Flush()
+}
 
 
 

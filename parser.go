@@ -2,8 +2,7 @@ package DirectumLogConverter
 
 import (
 	"bufio"
-	"encoding/json"
-	"github.com/mickep76/mapslice-json"
+	jsoniter "github.com/json-iterator/go"
 	"io"
 )
 
@@ -27,7 +26,8 @@ func (p *Parser) Consume() error {
 	s := p.scan
 	for s.Scan() {
 		raw := s.Bytes()
-		var elements = mapslice.MapSlice{}
+		var elements = &MapSlice{}
+		var json = jsoniter.ConfigDefault
 		_ = json.Unmarshal(raw, &elements)
 		logLine := &LogLine{
 			Elements:    elements,
@@ -36,11 +36,12 @@ func (p *Parser) Consume() error {
 		logEntry := p.converter.Convert(logLine)
 		p.printer.Print(logEntry)
 	}
+	p.printer.Flush()
 	return p.scan.Err()
 }
 
 type LogLine struct {
-	Elements    mapslice.MapSlice
+	Elements    *MapSlice
 	Raw         []byte
 }
 
@@ -54,7 +55,12 @@ type LogEntryPrinter interface {
 	Flush()
 }
 
+type LogElement struct {
+	Name  string
+	Value string
+}
+
 type LogEntry struct {
-	Elements           []string
+	Elements           []LogElement
 	AdditionalElements []string
 }

@@ -6,9 +6,11 @@ import (
 	flag "github.com/ogier/pflag"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
-const VERSION = "0.0.1"
+const VERSION = "0.0.2"
+const FilenamePostfix = "_converted"
 
 func main() {
 	if err := run(); err != nil {
@@ -24,20 +26,18 @@ func run() error {
 
 Usage of %s:
 
-  %s [filename]
+  %s [source] [destination]
 
-  If [filename] is omitted, it reads from standard input.
+  [source] argument is mandatory, [destination] is not, if omitted it will use source file name with postfix "%s" as destination file name.
 
 Switches:
 
-`, filename, filename)
+`, filename, filename, FilenamePostfix)
 		flag.PrintDefaults()
 	}
 	var csvFormatArg bool
-	var outFileArg string
 	var showVersion bool
 	flag.BoolVarP(&csvFormatArg, "csv", "c", false, "Use csv as output format.")
-	flag.StringVarP(&outFileArg, "output", "o", "", "Output file, if omitted it writes to standard output.")
 	flag.BoolVarP(&showVersion, "version", "v", false, "Print version.")
 	flag.Parse()
 
@@ -47,38 +47,34 @@ Switches:
 	}
 
 	inFileArg := flag.Arg(0)
-	inFile := os.Stdin
-	if inFileArg != "" {
-		f, err := os.Open(inFileArg)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-		inFile = f
+	if inFileArg == ""{
+		flag.Usage()
+		os.Exit(0)
 	}
 
-	outFile := os.Stdout
-	if outFileArg != "" {
-		f, err := os.Create(outFileArg)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-		outFile = f
+	inFile, err := os.Open(inFileArg)
+	if err != nil {
+		return err
+	}
+	defer inFile.Close()
+
+	outFileArg := flag.Arg(1)
+	if outFileArg == ""{
+		fileExt := filepath.Ext(inFileArg)
+		outFileArg = fmt.Sprintf("%s%s%s", strings.TrimSuffix(inFileArg, fileExt), FilenamePostfix, fileExt)
 	}
 
-	if outFileArg != "" {
-		var inputStr string
-		if inFileArg == "" {
-			inputStr = "standard input"
-		} else {
-			inputStr = fmt.Sprintf("\"%s\"", inFileArg)
-		}
-		fmt.Fprintf(os.Stdout, "Converting log from %s to \"%s\"...\n", inputStr, outFileArg)
+	outFile, err := os.Create(outFileArg)
+	if err != nil {
+		return err
 	}
+	defer outFile.Close()
+
+	fmt.Fprintf(os.Stdout, "Converting log from \"%s\" to \"%s\"...\n", inFileArg, outFileArg)
 
 	var printer DirectumLogConverter.LogEntryPrinter
 	if csvFormatArg  {
+		outFile.Write([]byte{0xEF, 0xBB, 0xBF})
 		printer = DirectumLogConverter.NewCsvPrinter(outFile)
 	} else {
 		printer = DirectumLogConverter.NewPrinter(outFile)

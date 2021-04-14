@@ -6,9 +6,10 @@ import (
 )
 
 func FitWidth(input string, width int) string {
-	spaces := width - utf8.RuneCountInString(input)
+	runeCount := utf8.RuneCountInString(input)
+	spaces := width - runeCount
 	if spaces <= 0 {
-		return input[:width]
+		return input[runeCount-width:]
 	}
 	buf := bytes.NewBuffer(make([]byte, 0, spaces+len(input)))
 	for i := 0; i < spaces; i++ {
