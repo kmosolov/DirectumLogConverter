@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 )
 
+const VERSION = "0.0.1"
+
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
@@ -33,9 +35,16 @@ Switches:
 	}
 	var csvFormatArg bool
 	var outFileArg string
+	var showVersion bool
 	flag.BoolVarP(&csvFormatArg, "csv", "c", false, "Use csv as output format.")
 	flag.StringVarP(&outFileArg, "output", "o", "", "Output file, if omitted it writes to standard output.")
+	flag.BoolVarP(&showVersion, "version", "v", false, "Print version.")
 	flag.Parse()
+
+	if showVersion {
+		fmt.Println("DirectumLogConverter. Version: ", VERSION)
+		os.Exit(0)
+	}
 
 	inFileArg := flag.Arg(0)
 	inFile := os.Stdin
