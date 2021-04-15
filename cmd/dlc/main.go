@@ -1,15 +1,19 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/kmosolov/DirectumLogConverter"
 	flag "github.com/ogier/pflag"
+	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
-const VERSION = "0.0.2"
+const VERSION = "0.0.3"
 const FilenamePostfix = "_converted"
 
 func main() {
@@ -35,8 +39,10 @@ Switches:
 `, filename, filename, FilenamePostfix)
 		flag.PrintDefaults()
 	}
+	var pipeArg bool
 	var csvFormatArg bool
 	var showVersion bool
+	flag.BoolVarP(&pipeArg, "pipe", "p", false, "Pipeline mode, input from STDIN, output to STDOUT.")
 	flag.BoolVarP(&csvFormatArg, "csv", "c", false, "Use csv as output format.")
 	flag.BoolVarP(&showVersion, "version", "v", false, "Print version.")
 	flag.Parse()
@@ -47,38 +53,98 @@ Switches:
 	}
 
 	inFileArg := flag.Arg(0)
-	if inFileArg == ""{
+	outFileArg := flag.Arg(1)
+	if inFileArg == "" && !pipeArg {
 		flag.Usage()
 		os.Exit(0)
 	}
 
-	inFile, err := os.Open(inFileArg)
-	if err != nil {
-		return err
-	}
-	defer inFile.Close()
+	var input io.Reader
+	var output io.Writer
 
-	outFileArg := flag.Arg(1)
-	if outFileArg == ""{
-		fileExt := filepath.Ext(inFileArg)
-		outFileArg = fmt.Sprintf("%s%s%s", strings.TrimSuffix(inFileArg, fileExt), FilenamePostfix, fileExt)
-	}
+	if pipeArg {
+		if inFileArg != "" || outFileArg != "" {
+			fmt.Fprintln(os.Stderr, "[source] and [destination] arguments cannot be used in pipeline mode.")
+			os.Exit(1)
+		}
+		input = os.Stdin
+		output = os.Stdout
+	} else {
+		inFile, err := os.Open(inFileArg)
+		if err != nil {
+			return err
+		}
+		input = inFile
+		defer inFile.Close()
 
-	outFile, err := os.Create(outFileArg)
-	if err != nil {
-		return err
-	}
-	defer outFile.Close()
+		if outFileArg == "" {
+			fileExt := filepath.Ext(inFileArg)
+			newFileExt := fileExt
+			if csvFormatArg {
+				newFileExt = ".csv"
+			}
+			outFileArg = fmt.Sprintf("%s%s%s", strings.TrimSuffix(inFileArg, fileExt), FilenamePostfix, newFileExt)
+		}
 
-	fmt.Fprintf(os.Stdout, "Converting log from \"%s\" to \"%s\"...\n", inFileArg, outFileArg)
+		if fileExists(outFileArg) && !askForConfirmation(fmt.Sprintf("File \"%s\" already exists, overwrite?", outFileArg)) {
+			os.Exit(0)
+		}
+
+		outFile, err := os.Create(outFileArg)
+		if err != nil {
+			return err
+		}
+		output = outFile
+		defer outFile.Close()
+
+		fmt.Fprintf(os.Stdout, "Converting log from \"%s\" to \"%s\"...\n", inFileArg, outFileArg)
+	}
 
 	var printer DirectumLogConverter.LogEntryPrinter
-	if csvFormatArg  {
-		outFile.Write([]byte{0xEF, 0xBB, 0xBF})
-		printer = DirectumLogConverter.NewCsvPrinter(outFile)
+	if csvFormatArg {
+		if !pipeArg {
+			output.Write([]byte{0xEF, 0xBB, 0xBF})
+		}
+		printer = DirectumLogConverter.NewCsvPrinter(output)
 	} else {
-		printer = DirectumLogConverter.NewPrinter(outFile)
+		printer = DirectumLogConverter.NewPrinter(output)
 	}
 
-	return DirectumLogConverter.NewParser(inFile, printer).Consume()
+	start := time.Now()
+	result := DirectumLogConverter.NewParser(input, printer).Consume(!pipeArg)
+	if !pipeArg {
+		fmt.Fprintf(os.Stdout, "Done! %s elapsed.", time.Since(start))
+	}
+	return result
+}
+
+func fileExists(filename string) bool {
+	_, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return true
+}
+
+func askForConfirmation(s string) bool {
+	reader := bufio.NewReader(os.Stdin)
+
+	for {
+		fmt.Printf("%s [y/n]: ", s)
+
+		response, err := reader.ReadString('\n')
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		response = strings.ToLower(strings.TrimSpace(response))
+
+		if response == "y" || response == "yes" {
+			return true
+		} else if response == "n" || response == "no" {
+			return false
+		}
+
+		fmt.Printf("Unrecognized input \"%s\"\n", response)
+	}
 }

@@ -29,22 +29,28 @@ func (p *CsvPrinter) Print(entry *LogEntry) {
 	var record []string
 	for _, elementName := range mandatoryLogElements {
 		value := ""
-		for _, element := range entry.Elements {
-			if element.Name == elementName {
-				value = element.Value
-				break
+		if entry.Elements != nil {
+			for _, element := range *entry.Elements {
+				if element.Name == elementName {
+					value = element.Value
+					break
+				}
 			}
 		}
 		visitedElements[elementName] = true
 		record = append(record, value)
 	}
-	for _, element := range entry.Elements {
-		if !visitedElements[element.Name] {
-			record = append(record, element.Value)
+	if entry.Elements != nil {
+		for _, element := range *entry.Elements {
+			if !visitedElements[element.Name] {
+				record = append(record, element.Value)
+			}
 		}
 	}
-	if len(entry.AdditionalElements) > 0 {
-		record = append(record, strings.Join(entry.AdditionalElements, "\n"))
+	if entry.AdditionalElements != nil {
+		if len(*entry.AdditionalElements) > 0 {
+			record = append(record, strings.Join(*entry.AdditionalElements, "\n"))
+		}
 	}
 	if err := p.Writer.Write(record); err != nil {
 		log.Fatal(err)

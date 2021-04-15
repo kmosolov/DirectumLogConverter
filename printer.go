@@ -19,25 +19,26 @@ func (p *Printer) IsWidthFixed() bool {
 
 func (p *Printer) Print(entry *LogEntry) {
 	firstElement := true
-	for _, element := range entry.Elements {
-		if firstElement {
-			firstElement = false
-		} else {
-			p.Writer.WriteRune(' ')
+	if entry.Elements != nil {
+		for _, element := range *entry.Elements {
+			if firstElement {
+				firstElement = false
+			} else {
+				p.Writer.WriteRune(' ')
+			}
+			p.Writer.WriteString(element.Value)
 		}
-		p.Writer.WriteString(element.Value)
 	}
 
 	p.Writer.WriteRune('\n')
-	for _, additionalElement := range entry.AdditionalElements {
-		p.Writer.WriteString(additionalElement)
-		p.Writer.WriteRune('\n')
+	if entry.AdditionalElements != nil {
+		for _, additionalElement := range *entry.AdditionalElements {
+			p.Writer.WriteString(additionalElement)
+			p.Writer.WriteRune('\n')
+		}
 	}
 }
 
 func (p *Printer) Flush() {
 	p.Writer.Flush()
 }
-
-
-

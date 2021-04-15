@@ -27,9 +27,11 @@ var defaultLogElementWidth = []logElementWidth{
 }
 
 func (c *Converter) Convert(line *LogLine) *LogEntry {
-	var result = LogEntry{}
+	var elements = make([]*LogElement, 0)
+	var result = LogEntry{Elements: &elements}
 	if line.Elements == nil {
-		result.Elements = append(result.Elements, LogElement{Value: string(line.Raw)})
+		newElements := append(*result.Elements, &LogElement{Value: string(*line.Raw)})
+		result.Elements = &newElements
 		return &result
 	}
 	for _, element := range *line.Elements {
@@ -60,7 +62,8 @@ func (c *Converter) Convert(line *LogLine) *LogEntry {
 				}
 			}
 		}
-		result.Elements = append(result.Elements, LogElement{key, s})
+		newElements := append(*result.Elements, &LogElement{key, s})
+		result.Elements = &newElements
 	}
 	return &result
 }
@@ -105,7 +108,7 @@ func convertObject(object interface{}, depth int) string {
 	}
 }
 
-func convertExObject(object interface{}) []string {
+func convertExObject(object interface{}) *[]string {
 	var result []string
 	if ex, ok := object.(map[string]interface{}); ok {
 		var exType = ex["type"]
@@ -125,5 +128,5 @@ func convertExObject(object interface{}) []string {
 	if s, ok := object.(string); ok {
 		result = append(result, s)
 	}
-	return result
+	return &result
 }
